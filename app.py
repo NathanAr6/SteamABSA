@@ -28,19 +28,19 @@ max_length = 500
 list_aspek = ['Gameplay', 'Graphics', 'Story', 'Sound', 'Developer', 'Content',
               'Multiplayer', 'Performance', 'Value', 'No']
 # Load aspect models
-with open('D:/ABSA/aspek/tokenizer.pkl', 'rb') as handle:
+with open('aspek/tokenizer.pkl', 'rb') as handle:
     tokenizer = pickle.load(handle)
 
 for aspek in list_aspek:
-    path = f'D:/ABSA/aspek/{aspek}.keras'
+    path = f'aspek/{aspek}.keras'
     models[aspek] = keras.models.load_model(path)
 
 list_aspek = ['Gameplay', 'Graphics', 'Story', 'Sound', 'Developer', 'Content',
               'Multiplayer', 'Performance', 'Value', 'Overall']
 # Load sentiment models and tokenizers
 for aspek in list_aspek:
-    model_path = f'D:/ABSA/sentimen/{aspek}_sentimen.keras'
-    tokenizer_path = f'D:/ABSA/sentimen/tokenizer_{aspek}_sentimen.pkl'
+    model_path = f'sentimen/{aspek}_sentimen.keras'
+    tokenizer_path = f'sentimen/tokenizer_{aspek}_sentimen.pkl'
     sentiment_models[aspek] = keras.models.load_model(model_path)
     with open(tokenizer_path, 'rb') as handle:
         sentiment_tokenizers[aspek] = pickle.load(handle)
@@ -107,7 +107,7 @@ def preprocessing(teks):
     tokens = tokenizer.tokenize(teks)
 
     # Mengubah slang dan abbreviation
-    slang_df = pd.read_csv('D:\ABSA\Slang.csv', encoding='latin-1')
+    slang_df = pd.read_csv('Slang.csv', encoding='latin-1')
     slang_dict = dict(zip(slang_df['Slang'], slang_df['Baku']))
     tokens = [slang_dict.get(token, token) for token in tokens]
 
@@ -233,7 +233,7 @@ def home():
 @app.route('/search_games', methods=['GET'])
 def search_games():
     query = request.args.get('query', '')
-    games_df = pd.read_csv('D:/ABSA/appid.csv', usecols=['game_id', 'name'])
+    games_df = pd.read_csv('appid.csv', usecols=['game_id', 'name'])
     
     # Ensure the column names match the CSV file
     if 'game_id' in games_df.columns and 'name' in games_df.columns:
