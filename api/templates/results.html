@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analysis Results</title>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style.css" />
+</head>
+<body>
+    <h1><img src="https://upload.wikimedia.org/wikipedia/commons/b/bc/Steam_gray-brown_logo.svg" alt="Steam Logo" class="cropped-logo"> Aspect Based Sentiment Analysis</h1>
+    {% if message %}
+    <div class="message">
+        <h2>{{ game_name }}</h2>
+        <p>{{ message }}</p>
+    </div>
+    {% else %}
+    <h2>{{ game_name }} - <span class="kategori {{ results['Overall'].kategori|lower }}">{{ results['Overall'].kategori }}</span></h2>
+    <div class="results-container">
+        <div class="column">
+            {% for aspect, data in results.items() %}
+            {% if loop.index is odd %}
+            <div class="aspect-container">
+                <div class="aspect-name">
+                    {{ aspect|title }}
+                    {% if not data.no_data %}
+                    - <span class="kategori {{ data.kategori|lower }}">{{ data.kategori }}</span>
+                    {% endif %}
+                </div>
+                <div class="bar-container">
+                    {% if data.no_data %}
+                    <div class="no-data-bar">
+                        <span class="percentage-text">Not enough data</span>
+                    </div>
+                    {% else %}
+                    <div class="positive-bar" style="width: {{ data.persentase_positif }}%;">
+                        {% if data.persentase_positif >= 10 %}
+                        <span class="percentage-text">{{ "%.1f"|format(data.persentase_positif) }}%</span>
+                        {% endif %}
+                    </div>
+                    <div class="negative-bar" style="width: {% if data.persentase_positif == 100 %}0{% else %}{{ data.persentase_negatif }}{% endif %}%;">
+                        {% if data.persentase_negatif >= 10 %}
+                        <span class="percentage-text">{{ "%.1f"|format(data.persentase_negatif) }}%</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        <div class="column">
+            {% for aspect, data in results.items() %}
+            {% if loop.index is even %}
+            <div class="aspect-container">
+                <div class="aspect-name">
+                    {{ aspect|title }}
+                    {% if not data.no_data %}
+                    - <span class="kategori {{ data.kategori|lower }}">{{ data.kategori }}</span>
+                    {% endif %}
+                </div>
+                <div class="bar-container">
+                    {% if data.no_data %}
+                    <div class="no-data-bar">
+                        <span class="percentage-text">Not enough data</span>
+                    </div>
+                    {% else %}
+                    <div class="positive-bar" style="width: {{ data.persentase_positif }}%;">
+                        {% if data.persentase_positif >= 10 %}
+                        <span class="percentage-text">{{ "%.1f"|format(data.persentase_positif) }}%</span>
+                        {% endif %}
+                    </div>
+                    <div class="negative-bar" style="width: {% if data.persentase_positif == 100 %}0{% else %}{{ data.persentase_negatif }}{% endif %}%;">
+                        {% if data.persentase_negatif >= 10 %}
+                        <span class="percentage-text">{{ "%.1f"|format(data.persentase_negatif) }}%</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    <a href="/" class="analyze-link">Analyze Another Game</a>
+    <div class="spacer"></div>
+
+    <script>
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                $('#loading').hide();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steam Aspect Based Sentiment Analysis</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style.css" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1><img src="https://upload.wikimedia.org/wikipedia/commons/b/bc/Steam_gray-brown_logo.svg" alt="Steam Logo" class="cropped-logo"> Aspect Based Sentiment Analysis</h1>
+        <form id="analyze-form" action="/predict" method="post">
+            <select name="appid" id="game" style="width: 300px;"></select>
+            <input type="hidden" name="game_name" id="game_name">
+            <input type="submit" value="Analyze">
+        </form>
+        <div id="loading" style="display: none;">Please wait...</div>
+        <div class="explanation">
+            <p>This ABSA project is part of my undergraduate thesis that uses the combination of Word2Vec and CNN, with an accuracy of 87%. The system will classify reviews into 9 different aspects.</p>
+            <ul>
+                <li><strong>Gameplay:</strong> The mechanics, playability, and control system of the game.</li>
+                <li><strong>Graphics:</strong> The quality of the graphics, atmosphere, and the user interface of the game.</li>
+                <li><strong>Story:</strong> The storyline, narrative, and character development of the game.</li>
+                <li><strong>Sound:</strong> The quality of audio, songs, and sound effects in the game.</li>
+                <li><strong>Developer:</strong> Reputation of the game developers on how well they listen to their players and providing updates.</li>
+                <li><strong>Content:</strong> The amount of content and features available in the game.</li>
+                <li><strong>Multiplayer:</strong> The quality of online features, server, and community in the gamee.</li>
+                <li><strong>Performance:</strong> The performance and optimization of the game.</li>
+                <li><strong>Value:</strong> The overall value and worth of the game and it's DLC.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#game').select2({
+                placeholder: "Search for a game...",
+                allowClear: true, // Allow clearing the selection
+                ajax: {
+                    url: '/search_games',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            query: params.term // search term
+                        };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data.map(function(game) {
+                                return {
+                                    id: game.game_id,
+                                    text: game.name
+                                };
+                            })
+                        };
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        console.error("Error loading results:", textStatus, errorThrown);
+                    },
+                    cache: true
+                },
+                minimumInputLength: 1 // Minimum characters to start searching
+            });
+
+            // Focus on the input when the dropdown is opened
+            $('#game').on('select2:open', function() {
+                $('.select2-search__field').focus();
+            });
+
+            // Set the hidden input field with the selected game name
+            $('#game').on('select2:select', function(e) {
+                var selectedGame = e.params.data.text;
+                $('#game_name').val(selectedGame);
+            });
+
+            // Show loading message when form is submitted
+            $('#analyze-form').on('submit', function() {
+                $('#loading').show();
+            });
+
+            // Hide loading message when navigating back
+            window.addEventListener('pageshow', function(event) {
+                if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                    $('#loading').hide();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
