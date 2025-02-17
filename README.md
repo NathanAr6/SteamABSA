@@ -1,5 +1,5 @@
 # Steam Aspect Based Sentiment Analysis Web App
-This Aspect Based Sentiment Analysis (ABSA) project is part of my undergraduate thesis that uses the combination of Word2Vec and CNN (Convolutional Neural Network).
+This Aspect Based Sentiment Analysis (ABSA) project is part of my undergraduate thesis where I created ABSA model using Convolutional Neural Networks (CNN) and compared it with the Long Short-Term Memory (LSTM).
 
 The system will classify reviews into 9 different aspects:
 
