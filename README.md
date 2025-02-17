@@ -1,7 +1,7 @@
 # Steam Aspect Based Sentiment Analysis Web App
-This Aspect Based Sentiment Analysis (ABSA) project is part of my undergraduate thesis where I created ABSA model using Convolutional Neural Networks (CNN) and compared it with the Long Short-Term Memory (LSTM).
+Sentiment analysis is the process of analyzing opinions towards a particular product, events, service, or topic to determine if the opinion is positive, negative, or neutral. There are three analysis level on sentiment analysis, document, sentence, and aspect. The aspect levels appear with the assumption that an opinion consist of sentiment and it's target (aspect). Therefore, in Aspect Based Sentiment Analysis (ABSA), there are two tasks that needs to be done, aspect extraction/classification and sentiment classification.
 
-The system will classify reviews into 9 different aspects:
+This  project is part of my undergraduate thesis where I created ABSA model using Convolutional Neural Networks (CNN) and compared it with the Long Short-Term Memory (LSTM). This repository contains the code for a Flask web that performs ABSA with model that already trained. The system will classify reviews into 9 different aspects:
 
 1. Gameplay: The mechanics, playability, and control system of the game.
 2. Graphics: The quality of the graphics, atmosphere, and the user interface of the game.
@@ -14,6 +14,7 @@ The system will classify reviews into 9 different aspects:
 9. Value: The overall value and worth of the game and it's DLC.
 
 ## Results
+The result shows that CNN works better than LSTM on aspect and sentiment classification.
 <table><thead>
   <tr>
     <th> </th>
@@ -60,7 +61,7 @@ The system will classify reviews into 9 different aspects:
 </table>
 
 ## Example
-The model created can be implemented into flask website, so people can enter a game name and they willl see the sentiment of each aspect.
+On the flask website, we only need to enter a game name. System will scrape reviews from Steam, preprocess, and classify it with trained model. Then it will show the sentiment of each aspect.
 
 ![](web_example/web_example.png)
 ![](web_example/result_1.png)
