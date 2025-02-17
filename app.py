@@ -25,25 +25,26 @@ sentiment_models = {}
 sentiment_tokenizers = {}
 max_length = 500
 
-list_aspek = ['Gameplay', 'Graphics', 'Story', 'Sound', 'Developer', 'Content',
-              'Multiplayer', 'Performance', 'Value', 'No']
 # Load aspect models
-with open('aspek/tokenizer.pkl', 'rb') as handle:
+aspect_list = ['Gameplay', 'Graphics', 'Story', 'Sound', 'Developer', 'Content',
+              'Multiplayer', 'Performance', 'Value', 'No']
+
+with open('aspect/tokenizer.pkl', 'rb') as handle:
     tokenizer = pickle.load(handle)
+for aspect in aspect_list:
+    path = f'aspect/{aspect}.keras'
+    models[aspect] = keras.models.load_model(path)
 
-for aspek in list_aspek:
-    path = f'aspek/{aspek}.keras'
-    models[aspek] = keras.models.load_model(path)
-
-list_aspek = ['Gameplay', 'Graphics', 'Story', 'Sound', 'Developer', 'Content',
+aspect_list = ['Gameplay', 'Graphics', 'Story', 'Sound', 'Developer', 'Content',
               'Multiplayer', 'Performance', 'Value', 'Overall']
-# Load sentiment models and tokenizers
-for aspek in list_aspek:
-    model_path = f'sentimen/{aspek}_sentimen.keras'
-    tokenizer_path = f'sentimen/tokenizer_{aspek}_sentimen.pkl'
-    sentiment_models[aspek] = keras.models.load_model(model_path)
+
+# Load sentiment models
+for aspect in aspect_list:
+    model_path = f'sentiment/{aspect}_sentimen.keras'
+    tokenizer_path = f'sentiment/tokenizer_{aspect}_sentimen.pkl'
+    sentiment_models[aspect] = keras.models.load_model(model_path)
     with open(tokenizer_path, 'rb') as handle:
-        sentiment_tokenizers[aspek] = pickle.load(handle)
+        sentiment_tokenizers[aspect] = pickle.load(handle)
 
 # Mapping score to qualitative description
 score_mapping = {
@@ -68,7 +69,6 @@ score_mapping = {
     '0/5': 'unplayable'
     }
 
-# Mengubah singkatan dari kata-kata negatif menjadi kepanjangannya
 to_replace = {'don\'t': 'do not', 'dont': 'do not',
     'doesn\'t': 'does not', 'doesnt': 'does not',
     'didn\'t': 'did not', 'didnt': 'did not',
@@ -81,32 +81,32 @@ to_replace = {'don\'t': 'do not', 'dont': 'do not',
     'wouldnt': 'would not', 'nt': 'not'
     }
 
-def hapus_huruf_berulang(kata):
+def remove_elongation(kata):
     if wordnet.synsets(kata):
       return kata
     pattern = re.compile(r"(.)\1{2,}")
     return pattern.sub(r"\1\1", kata)
 
-def preprocessing(teks):
-    # Mengubah menjadi huruf kecil
-    teks = teks.lower()
+def preprocessing(text):
+    # Casefolding
+    text = text.lower()
 
-    # Menghapus kalimat yang diawali ☐
-    teks = re.sub(r'☐.*', '', teks).strip()
+    # Remove review with ☐
+    text = re.sub(r'☐.*', '', text).strip()
 
-    # Mengubah singkatan dari kata-kata negatif menjadi kepanjangannya
-    for singkatan, kepanjangan in to_replace.items():
-        teks = re.sub(re.escape(singkatan), kepanjangan, teks)
+    # Replace abbreviation
+    for abbreviation, full in to_replace.items():
+        text = re.sub(re.escape(abbreviation), full, text)
 
     # Mapping score to qualitative description
     for score, description in score_mapping.items():
-        teks = teks.replace(score, description)
+        text = text.replace(score, description)
 
     # Tokenization
     tokenizer = RegexpTokenizer(r'\w+|[^\w\s]')
-    tokens = tokenizer.tokenize(teks)
+    tokens = tokenizer.tokenize(text)
 
-    # Mengubah slang dan abbreviation
+    # Change slang and abbreviation
     slang_df = pd.read_csv('Slang.csv', encoding='latin-1')
     slang_dict = dict(zip(slang_df['Slang'], slang_df['Baku']))
     tokens = [slang_dict.get(token, token) for token in tokens]
@@ -116,8 +116,8 @@ def preprocessing(teks):
     stop_words.remove('not')
     tokens = [token for token in tokens if token not in stop_words]
 
-    # Menghapus special characters, angka, huruf yang berulang, string kosong
-    tokens = [hapus_huruf_berulang(token) for token in tokens]
+    # Remove special characters, numbers, empty string
+    tokens = [remove_elongation(token) for token in tokens]
     tokens = [re.sub(r'[^\w\s]', '', token) for token in tokens]
     tokens = [re.sub(r'[\u4e00-\u9fff]', '', token) for token in tokens]
     tokens = [re.sub(r'\d+', '', token) for token in tokens]
@@ -134,7 +134,7 @@ def get_reviews(appid, params={'json':1}):
         response = requests.get(url=url+appid, params=params, headers={'User-Agent': 'Mozilla/5.0'})
         return response.json()
 
-# Fungsi untuk mengambil sejumlah ulasan berdasarkan tipe ulasan (positif/negatif), appid, dan jumlah ulasan yang diinginkan.
+# Scrape review based on review_type (positive/negative), appid, and number of review scraped.
 def get_n_reviews(review_type, appid, n):
     reviews = []
     cursor = '*'
@@ -156,29 +156,27 @@ def get_n_reviews(review_type, appid, n):
         cursor = response['cursor']
         reviews += response['reviews']
 
-        #if len(response['reviews']) < 100: break
-
-    print(f"Number of reviews scraped: {len(reviews)}")  # Add this line to print the number of reviews scraped
+    print(f"Number of reviews scraped: {len(reviews)}") 
     return reviews
 
-def klasifikasi_aspek(df, tokenizer, max_length, models):
+def aspect_classification(df, tokenizer, max_length, models):
     # Padding data
     sequences = tokenizer.texts_to_sequences(df["preprocessed"].tolist())
     padded_sequences = pad_sequences(sequences, maxlen=max_length)
 
-    # Prediksi aspek dari ulasan
-    for aspek, model in models.items():
-        pred_aspek = (model.predict(padded_sequences) > 0.5).astype("int32").flatten()
-        df[aspek] = pred_aspek
+    # Predict aspect from review (1 - have aspect, 0 - no aspect)
+    for aspect, model in models.items():
+        pred_aspect = (model.predict(padded_sequences) > 0.5).astype("int32").flatten()
+        df[aspect] = pred_aspect
 
     return df
 
-def hapus_noise(df):
+def remove_noise(df):
     pred_data_noise = df['No']
-    pred_aspek = df.columns.difference(['No', 'review', 'preprocessed'])
-    aspect_count = df[pred_aspek].sum(axis=1)
+    pred_aspect = df.columns.difference(['No', 'review', 'preprocessed'])
+    aspect_count = df[pred_aspect].sum(axis=1)
 
-    # Cari index dari noise
+    # Find index from review that predicted as noise
     noise_index = df.index[
         (pred_data_noise == 1) & (aspect_count <= 1) #| (aspect_count == 0)
     ]
@@ -188,40 +186,42 @@ def hapus_noise(df):
 
     return filtered_df
 
-def klasifikasi_sentimen(df, sentiment_models, sentiment_tokenizers, max_length):
-    for aspek in sentiment_models.keys():
-        df[f"{aspek}_sentimen"] = np.nan
-        sentimen_model = sentiment_models[aspek]
-        sentimen_tokenizer = sentiment_tokenizers[aspek]
+def sentiment_classification(df, sentiment_models, sentiment_tokenizers, max_length):
+    for aspect in sentiment_models.keys():
+        df[f"{aspect}_sentimen"] = np.nan
+        sentimen_model = sentiment_models[aspect]
+        sentimen_tokenizer = sentiment_tokenizers[aspect]
 
         # Padding data
         sequences = sentimen_tokenizer.texts_to_sequences(df["preprocessed"].tolist())
         padded_sequences = pad_sequences(sequences, maxlen=max_length)
 
-        if aspek == 'Overall':
+        # Predict sentiment from review (1 - positive, 0 - negative)
+        # If aspect is Overall, predict all reviews
+        if aspect == 'Overall':
             pred_overall = (sentimen_model.predict(padded_sequences) > 0.5).astype("int32").flatten()
             df['Overall_sentimen'] = pred_overall
 
+        # If aspect is not Overall, predict only reviews with aspect=1 (have aspect in reviews)
         else:
-            # Cari indeks dimana aspek=1
-            pred_aspek = df[aspek].values
-            sentiment_indices = np.where(pred_aspek.flatten() == 1)[0]
+            # Find index of aspect=1
+            pred_aspect = df[aspect].values
+            sentiment_indices = np.where(pred_aspect.flatten() == 1)[0]
 
             if sentiment_indices.size > 0:
-                # Prediksi sentimen dari ulasan
-                pred_sentimen = (sentimen_model.predict(padded_sequences[sentiment_indices]) > 0.5).astype("int32").flatten()
-                df.loc[sentiment_indices, f"{aspek}_sentimen"] = pred_sentimen
+                pred_sentiment = (sentimen_model.predict(padded_sequences[sentiment_indices]) > 0.5).astype("int32").flatten()
+                df.loc[sentiment_indices, f"{aspect}_sentimen"] = pred_sentiment
 
     return df
 
-def kategori_sentimen(persentase_positif):
-    if persentase_positif > 80:
+def sentiment_category(positive_percentage):
+    if positive_percentage > 80:
         return 'Very Positive'
-    elif 55 < persentase_positif <= 80:
+    elif 55 < positive_percentage <= 80:
         return 'Positive'
-    elif 45 <= persentase_positif <= 55:
+    elif 45 <= positive_percentage <= 55:
         return 'Mixed'
-    elif 20 < persentase_positif < 45:
+    elif 20 < positive_percentage < 45:
         return 'Negative'
     else:
         return 'Very Negative'
@@ -235,38 +235,37 @@ def search_games():
     query = request.args.get('query', '')
     games_df = pd.read_csv('appid.csv', usecols=['game_id', 'name'])
     
-    # Ensure the column names match the CSV file
     if 'game_id' in games_df.columns and 'name' in games_df.columns:
         # Filter games based on the query
         filtered_games = games_df[games_df['name'].str.contains(query, case=False, na=False)]
         
-        # Convert to a list of dictionaries
+        # Convert to dictionaries
         results = filtered_games.to_dict(orient='records')
-        print(f"Results: {results}")  # Debugging statement
-        
+        print(f"Results: {results}")
         return jsonify(results)
     else:
-        print("Columns not found")  # Debugging statement
-        return jsonify([])  # Return an empty list if columns are not found
+        print("Columns not found") 
+        return jsonify([]) 
 
 @app.route('/predict', methods=['POST'])
 def predict():
     start_time = time.time()
-    
     appid = request.form['appid']  # Get appid from user input
     game_name = request.form['game_name']
+
     review_type = ['positive', 'negative']
     reviews = []
-
     for sentiment in review_type:
-        reviews.extend(get_n_reviews(sentiment, appid, 300))  # Reduced to 200 reviews
+        reviews.extend(get_n_reviews(sentiment, appid, 500)) 
 
     fetch_reviews_time = time.time()
     print(f"Time to fetch reviews: {fetch_reviews_time - start_time} seconds")
 
+    # Check if there are no reviews
     if reviews == []:
         return render_template('results.html', game_name=game_name, results={}, message="The game doesn't have any reviews")
     
+    # Preprocess reviews
     df_review = pd.DataFrame(reviews)[['review']]
     df_review['preprocessed'] = df_review['review'].apply(preprocessing)  # Implement preprocessing function
     df_review = df_review[df_review['preprocessed'].str.count(' ') + 1 > 1]
@@ -276,31 +275,33 @@ def predict():
     if len(df_review) < 50:
         return render_template('results.html', game_name=game_name, results={}, message="The game doesn't have enough reviews")
 
+    # Classify aspect and sentiment
     df_review_copy = df_review.copy()
-    df_review = klasifikasi_aspek(df_review_copy, tokenizer, max_length, models)
-    df_review = hapus_noise(df_review)
-    df_review = klasifikasi_sentimen(df_review, sentiment_models, sentiment_tokenizers, max_length)
+    df_review = aspect_classification(df_review_copy, tokenizer, max_length, models)
+    df_review = remove_noise(df_review)
+    df_review = sentiment_classification(df_review, sentiment_models, sentiment_tokenizers, max_length)
 
     results = {}
-    for aspek in list_aspek:
-        if aspek != 'Overall':
-            total_aspek = df_review[aspek].sum()
-            no_data = total_aspek < 30
+    for aspect in aspect_list:
+        if aspect != 'Overall':
+            total_aspect = df_review[aspect].sum()
+            no_data = total_aspect < 30
         else:
             no_data = False
 
-        sentimen = f"{aspek}_sentimen"
-        if sentimen in df_review.columns:
-            total = df_review[sentimen].count()
-            positif = (df_review[sentimen] == 1).sum()
-            negatif = (df_review[sentimen] == 0).sum()
-            persentase_positif = (positif / total) * 100 if total > 0 else 0
-            persentase_negatif = (negatif / total) * 100 if total > 0 else 0
-            kategori = kategori_sentimen(persentase_positif)
-            results[aspek] = {
-                'kategori': kategori,
-                'persentase_positif': persentase_positif,
-                'persentase_negatif': persentase_negatif,
+        # Calculate percentage of positive and negative sentiment
+        sentiment = f"{aspect}_sentimen"
+        if sentiment in df_review.columns:
+            total = df_review[sentiment].count()
+            positive = (df_review[sentiment] == 1).sum()
+            negative = (df_review[sentiment] == 0).sum()
+            positive_percentage = (positive / total) * 100 if total > 0 else 0
+            negative_percentage = (negative / total) * 100 if total > 0 else 0
+            category = sentiment_category(positive_percentage)
+            results[aspect] = {
+                'category': category,
+                'positive_percentage': positive_percentage,
+                'negative_percentage': negative_percentage,
                 'no_data': no_data
             }
 
